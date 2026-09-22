@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CinéIA Spectrum — Une image, un monde de vidéos</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+        --bg:#0a0a0a; --panel:#151515; --panel-2:#1a1a1a; --border:#2a2a2a;
+        --accent:#c4b5fd; --accent-dark:#a78bfa; --text:#e0e0e0; --text-dim:#888;
+        --success:#4ade80; --error:#f87171; --warn:#facc15;
+    }
+    body { font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+        background:var(--bg); color:var(--text); min-height:100vh; display:flex;
+        flex-direction:column; align-items:center; padding:2rem 1rem; }
+    .container { max-width:1200px; width:100%; }
+    header { text-align:center; margin-bottom:2rem; }
+    h1 { font-size:1.8rem; font-weight:300; letter-spacing:0.05em; color:#f0f0f0; }
+    .subtitle { color:var(--text-dim); font-size:0.85rem; font-style:italic; margin-top:0.3rem; }
+
+    .settings-toggle { background:transparent; border:1px solid var(--border);
+        color:var(--text-dim); padding:0.5rem 1rem; border-radius:8px; font-size:0.8rem;
+        cursor:pointer; margin-bottom:1rem; }
+    .settings-toggle:hover { border-color:var(--accent-dark); color:var(--accent); }
+    .settings-panel { background:var(--panel); border:1px solid var(--border);
+        border-radius:12px; padding:1.25rem; margin-bottom:1.5rem; display:none; }
+    .settings-panel.visible { display:block; }
+    .settings-row { display:flex; gap:0.75rem; align-items:end; }
+    .settings-hint { font-size:0.75rem; color:var(--text-dim); margin-top:0.5rem; }
+
+    .quota-bar { background:var(--panel); border:1px solid var(--border); border-radius:12px;
+        padding:0.8rem 1.2rem; margin-bottom:1.5rem; display:flex; gap:1.5rem;
+        flex-wrap:wrap; align-items:center; font-size:0.75rem; }
+    .quota-item { display:flex; align-items:center; gap:0.5rem; }
+    .quota-item .label { color:var(--text-dim); }
+    .quota-item .value { font-weight:600; font-variant-numeric:tabular-nums; }
+    .quota-item .value.ok { color:var(--success); }
+    .quota-item .value.warn { color:var(--warn); }
+    .quota-item .value.danger { color:var(--error); }
+
+    .btn { padding:1rem 2rem; background:var(--accent-dark); color:#0a0a0a; border:none;
+        border-radius:10px; font-size:1rem; font-weight:600; cursor:pointer;
+        transition:background 0.2s,transform 0.1s; width:100%; }
+    .btn:hover:not(:disabled) { background:var(--accent); }
+    .btn:active:not(:disabled) { transform:scale(0.98); }
+    .btn:disabled { background:#333; color:#666; cursor:not-allowed; }
+    .btn-secondary { background:#2a2a2a; color:var(--text); }
+    .btn-secondary:hover:not(:disabled) { background:#3a3a3a; }
+
+    .upload-area { background:var(--panel); border:2px dashed var(--border);
+        border-radius:16px; padding:2.5rem; text-align:center; cursor:pointer;
+        transition:border-color 0.2s, background 0.2s; margin-bottom:1.5rem; }
+    .upload-area:hover, .upload-area.dragover { border-color:var(--accent-dark); background:#1a1525; }
+    .upload-area input[type="file"] { display:none; }
+    .upload-icon { font-size:3rem; margin-bottom:1rem; }
+    .upload-text { font-size:1.1rem; color:var(--text); margin-bottom:0.5rem; }
+    .upload-hint { font-size:0.8rem; color:var(--text-dim); }
+    .preview-thumb { max-width:100%; max-height:200px; border-radius:10px;
+        margin:1rem auto 0; display:none; }
+    .preview-thumb.visible { display:block; }
+
+    .options-row { display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .options-row > * { flex:1; min-width:200px; }
+    label { display:block; font-size:0.8rem; color:var(--text-dim); margin-bottom:0.4rem;
+        text-transform:uppercase; letter-spacing:0.08em; }
+    select, input[type="password"] {
+        width:100%; padding:0.85rem 1rem; border-radius:10px; border:1px solid var(--border);
+        background:#0f0f0f; color:var(--text); font-family:inherit; font-size:0.95rem; }
+    select:focus, input:focus { outline:none; border-color:var(--accent-dark); }
+    select option { background:#1a1a1a; color:var(--text); }
+
+    .styles-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px,1fr));
+        gap:0.6rem; margin-bottom:1.5rem; max-height:450px; overflow-y:auto;
+        padding:0.5rem; background:var(--panel); border-radius:12px;
+        border:1px solid var(--border); }
+    .style-checkbox { display:flex; align-items:center; gap:0.5rem; padding:0.6rem 0.8rem;
+        background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
+        cursor:pointer; font-size:0.8rem; transition:all 0.2s; user-select:none; }
+    .style-checkbox:hover { border-color:var(--accent-dark); }
+    .style-checkbox.checked { background:#2a2035; border-color:var(--accent-dark); color:var(--accent); }
+    .style-checkbox input { width:auto; margin:0; accent-color:var(--accent-dark); }
+
+    .section-title { font-size:0.85rem; color:var(--accent-dark); text-transform:uppercase;
+        letter-spacing:0.1em; margin-bottom:0.8rem; font-weight:600; }
+
+    .queue-panel { margin-top:1.5rem; }
+    .queue-item { display:flex; align-items:center; gap:1rem; padding:0.8rem 1rem;
+        background:var(--panel); border:1px solid var(--border); border-radius:10px;
+        margin-bottom:0.5rem; transition:border-color 0.3s, opacity 0.3s; }
+    .queue-item.pending { opacity:0.5; }
+    .queue-item.processing { border-color:var(--accent-dark); }
+    .queue-item.done { border-color:var(--success); }
+    .queue-item.failed { border-color:var(--error); }
+    .queue-icon { font-size:1.2rem; width:2rem; text-align:center; flex-shrink:0; }
+    .queue-info { flex:1; min-width:0; }
+    .queue-style { font-size:0.85rem; color:var(--accent); font-weight:600; }
+    .queue-meta { font-size:0.7rem; color:var(--text-dim); margin-top:0.15rem;
+        display:flex; gap:0.8rem; flex-wrap:wrap; }
+    .queue-status { font-size:0.75rem; color:var(--text-dim); text-align:right;
+        min-width:90px; flex-shrink:0; }
+
+    .video-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr));
+        gap:1rem; margin-top:1.5rem; }
+    .video-item { background:var(--panel-2); border-radius:12px; overflow:hidden;
+        border:1px solid var(--border); animation:fadeIn 0.6s ease-in; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(10px);}
+        to{opacity:1; transform:translateY(0);} }
+    .video-item video { width:100%; display:block; aspect-ratio:9/16; object-fit:cover;
+        background:#000; }
+    .video-caption { padding:0.6rem 0.8rem; background:var(--panel); }
+    .video-caption-title { font-size:0.8rem; color:var(--accent); font-weight:600; }
+    .video-caption-meta { font-size:0.7rem; color:var(--text-dim); margin-top:0.2rem; }
+
+    .log-box { margin-top:1rem; padding:0.75rem; background:#0f0f0f; border-radius:10px;
+        border:1px solid #222; font-family:ui-monospace,monospace; font-size:0.7rem;
+        color:#666; max-height:180px; overflow-y:auto; display:none; }
+    .log-box.visible { display:block; }
+    .log-box div { padding:1px 0; }
+    .log-box .ok { color:var(--success); }
+    .log-box .err { color:var(--error); }
+    .log-box .warn { color:var(--warn); }
+    .log-box .hl { color:var(--accent); }
+
+    .status-line { font-size:0.9rem; color:var(--accent-dark); margin-bottom:1rem;
+        display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+    .status-line .dot { width:8px; height:8px; border-radius:50%; background:var(--accent-dark);
+        animation:pulse 1.5s infinite; flex-shrink:0; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    .cooldown-badge { background:#3a2a15; color:var(--warn); padding:0.2rem 0.6rem;
+        border-radius:6px; font-size:0.75rem; font-weight:600; }
+    .error-box { background:#2a1515; border:1px solid var(--error); border-radius:10px;
+        padding:1rem; color:var(--error); font-size:0.85rem; margin-top:1rem; display:none; }
+    .error-box.visible { display:block; }
+    .hidden { display:none !important; }
+
+    .duration-info { background:#1a2535; border-left:3px solid var(--accent);
+        padding:0.6rem 0.9rem; border-radius:8px; font-size:0.78rem; color:var(--accent);
+        margin-bottom:1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>CinéIA Spectrum</h1>
+        <p class="subtitle">Une image. Un monde de vidéos. — 5 à 10 secondes par clip</p>
+    </header>
+
+    <button class="settings-toggle" onclick="document.getElementById('settings-panel').classList.toggle('visible')">
+        ⚙️ Paramètres API
+    </button>
+    <div id="settings-panel" class="settings-panel">
+        <div class="settings-row">
+            <div style="flex:1;">
+                <label for="api-key-input">Clé API Agnes AI</label>
+                <input type="password" id="api-key-input" placeholder="sk-...">
+            </div>
+            <button class="btn" style="width:auto; padding:0.85rem 1.5rem;" onclick="saveApiKey()">Sauvegarder</button>
+        </div>
+        <p class="settings-hint">Stockée localement. Jamais envoyée ailleurs qu'à l'API Agnes AI.</p>
+    </div>
+
+    <div class="quota-bar" id="quota-bar">
+        <div class="quota-item"><span class="label">🎬 Vidéo</span><span class="value ok" id="quota-video">0/1</span><span class="label">RPM</span></div>
+        <div class="quota-item"><span class="label">📝 Texte</span><span class="value ok" id="quota-text">0/20</span><span class="label">RPM</span></div>
+        <div class="quota-item"><span class="label">⏱ File</span><span class="value ok" id="quota-queue">0</span><span class="label">vidéos</span></div>
+    </div>
+
+    <div class="upload-area" id="upload-area">
+        <input type="file" id="file-input" accept="image/*">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-text">Appuyez pour choisir une image</div>
+        <div class="upload-hint">JPG, PNG, WEBP — elle servira de première frame pour toutes les vidéos</div>
+        <img id="preview-thumb" class="preview-thumb" alt="Aperçu">
+    </div>
+
+    <button class="btn btn-secondary" onclick="clearImage()" style="width:auto; margin-bottom:1.5rem;">
+        🗑️ Retirer l'image
+    </button>
+
+    <div class="section-title">🎨 Choisissez vos styles (cochez ceux qui vous plaisent)</div>
+    <div class="styles-grid" id="styles-grid"></div>
+
+    <div class="duration-info" id="duration-info">
+        ⏱ Durée : 6,4 s par vidéo (153 frames à 24 fps) — optimal pour le tier gratuit
+    </div>
+
+    <div class="options-row">
+        <div>
+            <label for="duration-select">Durée de chaque vidéo</label>
+            <select id="duration-select">
+                <option value="121">5,0 s — court et efficace</option>
+                <option value="153" selected>6,4 s — recommandé</option>
+                <option value="241">10,0 s — immersif</option>
+            </select>
+        </div>
+        <div>
+            <label for="motion-select">Mouvement / action (excentrique par défaut)</label>
+            <select id="motion-select">
+                <option value="excentrique" selected>🤪 Excentrique — imprévisible et absurde</option>
+                <option value="hallucinant">🌀 Hallucinant — surréaliste et déroutant</option>
+                <option value="spectaculaire">💥 Spectaculaire — explosions visuelles</option>
+                <option value="impressionnant">✨ Impressionnant — techniquement époustouflant</option>
+                <option value="shaolin">🥋 Kung-fu Shaolin — katas fluides</option>
+                <option value="hiphop">💃 Hip-hop — mouvements urbains</option>
+                <option value="robot">🤖 Robot saccadé — mécanique et précis</option>
+                <option value="ralenti">⏳ Ralenti — chaque micro-geste amplifié</option>
+                <option value="contemporain">🩰 Danse contemporaine — fluide et abstrait</option>
+                <option value="cinematique">🎬 Cinématique — lent et délibéré</option>
+            </select>
+        </div>
+    </div>
+
+    <button id="generate-btn" class="btn" onclick="startGeneration()" disabled>
+        🎬 Générer les vidéos
+    </button>
+
+    <div id="status-panel" class="hidden" style="margin-top:1.5rem;">
+        <div class="status-line">
+            <span class="dot"></span>
+            <span id="global-status-text">Initialisation…</span>
+            <span id="cooldown-badge" class="cooldown-badge" style="display:none;"></span>
+        </div>
+    </div>
+
+    <div id="queue-panel" class="queue-panel hidden"></div>
+
+    <div id="gallery-panel" class="hidden">
+        <div class="section-title">✦ Vidéos générées ✦</div>
+        <div id="video-grid" class="video-grid"></div>
+    </div>
+
+    <div id="log-box" class="log-box"></div>
+</div>
+
+<script>
+// ==================================================================
+// CONFIGURATION
+// ==================================================================
+const DEFAULT_API_KEY = "sk-DZ8qTzDZ9fWahefwquW7I3a0acKnlVCP7trguNigNJrQgQAL";
+const BASE_URL = "https://apihub.agnes-ai.com/v1";
+const RAW_URL  = "https://apihub.agnes-ai.com";
+
+const MODELS = { text: "agnes-2.0-flash", video: "agnes-video-v2.0" };
+
+// Durées valides : 8n+1, ≤ 441
+const VALID_FRAMES = [121, 153, 241];
+const FRAME_RATE = 24;
+
+// Timings optimisés pour le tier gratuit (RPM vidéo = 1/min)
+// On ne perd pas de temps : dès que la vidéo précédente est terminée,
+// on attend juste assez pour respecter le RPM.
+const FIRST_POLL_DELAY_MS = 45000;    // 45 s avant 1ère vérification (générations 121-241 frames ≈ 60-90 s)
+const POLL_INTERVAL_MS = 10000;       // 10 s entre vérifications (plus réactif)
+const MAX_POLL_ATTEMPTS = 40;
+const INTER_VIDEO_DELAY_MS = 60000;   // 60 s entre 2 créations vidéo (RPM = 1/min)
+const PRE_VIDEO_DELAY_MS = 60000;     // 60 s avant le premier clip
+
+// Backoff 429 progressif
+const RATE_LIMIT_BACKOFF_SEC = [5, 10, 15, 20, 30, 45, 60];
+const MAX_RATE_LIMIT_RETRIES = 7;
+
+// Backoff réseau
+const NETWORK_ERROR_BACKOFF_SEC = [5, 10, 15, 20, 30, 45, 60];
+const MAX_NETWORK_RETRIES = 7;
+
+// ==================================================================
+// 30 STYLES CAPABLES DE CRÉER DES VIDÉOS HALLUCINANTES
+// ==================================================================
+const STYLES = [
+    // ─── Animation / Manga (7) ───────────────────────────────────
+    { id:"anime", name:"Anime Cinématique", icon:"📖", category:"animation",
+      prompt:"Japanese anime style, cinematic cel-shaded animation, crisp ink outlines, expressive eyes, dynamic action lines, vibrant saturated colors, Studio Ghibli meets modern shonen aesthetic, epic dramatic lighting" },
+    { id:"ghibli", name:"Ghibli Onirique", icon:"🌿", category:"animation",
+      prompt:"Hand-painted watercolor textures, soft midday light, lush green landscapes, cel-shaded characters, painterly cumulus sky, gentle breeze through grass, muted earth tones, nostalgic magical realism, dreamlike atmosphere" },
+    { id:"arcane", name:"Arcane (peinture animée)", icon:"🎨", category:"animation",
+      prompt:"Painterly 2D animation with visible brushstrokes, rich saturated colors, dramatic lighting, cinematic composition, stylized character design, Arcane series aesthetic, oil-paint-meets-3D rendering" },
+    { id:"manga-nb", name:"Manga Noir & Blanc", icon:"🖤", category:"animation",
+      prompt:"Black and white manga style, stark ink outlines, dramatic screentones, high contrast chiaroscuro, dynamic action lines, Japanese comic aesthetic, Tite Kubo meets Junji Ito mood" },
+    { id:"cyberpunk-anime", name:"Cyberpunk Anime", icon:"🌃", category:"animation",
+      prompt:"1980s cyberpunk anime, neon-drenched Tokyo, rain-slicked streets, holographic advertisements, detailed mechanical design, Akira Katsuhiro Otomo style, chromatic aberration, lens flares" },
+    { id:"cartoon", name:"Cartoon Explosif", icon:"🖍️", category:"animation",
+      prompt:"Bright colorful 2D cartoon, bold outlines, exaggerated expressions, flat vibrant colors, playful chaotic energy, classic Saturday-morning animation style, slapstick visual comedy" },
+    { id:"pixel", name:"Pixel Art Rétro", icon:"👾", category:"animation",
+      prompt:"Pixel art animation, 16-bit retro video game aesthetic, limited color palette, dithering patterns, sprite animation, SNES and Genesis era, isometric perspective, CRT scanline glow" },
+
+    // ─── Cinéma Hallucinant (6) ────────────────────────────────────
+    { id:"wes", name:"Wes Anderson Symétrique", icon:"🎩", category:"cinema",
+      prompt:"Perfectly symmetrical composition, planimetric staging, flat frontal framing, pastel color palette (soft pink, mint green, pale yellow), meticulous production design, slow dolly-in, flat 40mm telephoto lens, centered subject, whimsical precision, deadpan framing, dollhouse aesthetic" },
+    { id:"kubrick", name:"Kubrick Géométrique", icon:"🎥", category:"cinema",
+      prompt:"One-point perspective, symmetrical centering, slow zoom, wide-angle interiors, geometric order, formal ritualized blocking, cool observational distance, restrained exact color palette, unsettling calm, clinical precision" },
+    { id:"villeneuve", name:"Villeneuve Monumental", icon:"🏜️", category:"cinema",
+      prompt:"Monumental scale, monochromatic desaturated palette blocks, atmospheric haze, long lenses, negative-space blocking, brutalist architecture, minimal contrast, golden sand tones with cool blue shadows, epic dust storms" },
+    { id:"refn", name:"Refn Neon Hypnotique", icon:"🌆", category:"cinema",
+      prompt:"Neon-soaked magenta and cyan palette, hypnotic slow motion, minimalist dialogue, symmetrical compositions, synthwave aesthetic, brutal elegance, shallow depth of field, electric atmosphere" },
+    { id:"noir", name:"Film Noir Ombre & Lumière", icon:"🖤", category:"cinema",
+      prompt:"Classic film noir, high contrast chiaroscuro lighting, deep shadows, venetian blind shadows, 1940s detective aesthetic, black and white cinematography, German Expressionism influence, cigarette smoke curling in light beams" },
+    { id:"chaplin", name:"Chaplin Burlesque", icon:"🎩", category:"cinema",
+      prompt:"Classic silent film era, black and white with subtle sepia tint, 1920s-1930s slapstick, Tramp persona, bowler hat, toothbrush mustache, oversized baggy trousers, comically large shoes, cane, theatrical pantomime, 16mm film grain, flickering projection, vaudeville energy" },
+
+    // ─── Pictural / Peinture (6) ───────────────────────────────────
+    { id:"vangogh", name:"Van Gogh Tourbillon", icon:"🌻", category:"painterly",
+      prompt:"Vincent van Gogh oil painting style, swirling impasto brushstrokes, thick textured paint, vibrant complementary colors, expressive movement, post-impressionist energy, Starry Night dynamic swirls" },
+    { id:"dali", name:"Dali Surréaliste", icon:"🌀", category:"painterly",
+      prompt:"Salvador Dali surrealist style, melting clocks, impossible dreamscapes, meticulous rendering of fantastical elements, uncanny atmosphere, symbolic imagery, hyperrealistic absurdity" },
+    { id:"monet", name:"Monet Impressionniste", icon:"🌸", category:"painterly",
+      prompt:"Claude Monet impressionist style, soft dappled light, visible brushstrokes, water lilies atmosphere, pastel palette, en plein air feeling, shimmering atmospheric light" },
+    { id:"klimt", name:"Klimt Doré", icon:"✨", category:"painterly",
+      prompt:"Gustav Klimt style, gold leaf ornamentation, decorative patterns, sensuous curves, Byzantine mosaic influence, rich jewel tones, opulent golden textures" },
+    { id:"rembrandt", name:"Rembrandt Ténébreux", icon:"🕯️", category:"painterly",
+      prompt:"Rembrandt oil painting, dramatic chiaroscuro, warm candlelight, deep shadows, rich earth tones, Baroque master technique, textured canvas, single light source illuminating the subject" },
+    { id:"hokusai", name:"Hokusai Estampe", icon:"🌊", category:"painterly",
+      prompt:"Katsushika Hokusai ukiyo-e style, woodblock print aesthetic, flat colors, bold outlines, wave patterns, Japanese Edo period art, The Great Wave dynamic energy" },
+
+    // ─── Genre / Ambiance (5) ──────────────────────────────────────
+    { id:"cyberpunk", name:"Cyberpunk Pluie Néon", icon:"🌃", category:"genre",
+      prompt:"Cyberpunk futuristic aesthetic, neon pink and cyan lighting, rain-slicked streets, holographic advertisements, Blade Runner atmosphere, chromatic aberration, lens flares, wet reflective surfaces" },
+    { id:"scifi", name:"Science-Fiction Cosmique", icon:"🚀", category:"genre",
+      prompt:"Epic science-fiction cinematic style, monumental scale, atmospheric haze, vast negative space, futuristic architecture, cold desaturated palette with warm accent lighting, cosmic dust particles, interstellar atmosphere" },
+    { id:"steampunk", name:"Steampunk Mécanique", icon:"⚙️", category:"genre",
+      prompt:"Steampunk Victorian aesthetic, brass and copper machinery, gears and cogs, steam-powered contraptions, leather and wood, sepia and bronze tones, steam clouds and mechanical rhythm" },
+    { id:"horreur", name:"Horreur Psychologique", icon:"👻", category:"genre",
+      prompt:"Horror cinematic style, deep shadows, unsettling stillness, desaturated palette, sudden contrast, psychological tension, slow creeping camera movement, unsettling atmosphere" },
+    { id:"vaporwave", name:"Vaporwave Nostalgique", icon:"🌴", category:"genre",
+      prompt:"Vaporwave aesthetic, nostalgic 90s imagery, pastel gradient, Greek statues, Windows 95 UI elements, ambient consumerism, VHS quality, retro-futurism, mallsoft atmosphere" },
+
+    // ─── Expérimental (4) ──────────────────────────────────────────
+    { id:"glitch", name:"Glitch Art Digital", icon:"📺", category:"experimental",
+      prompt:"Glitch art aesthetic, datamoshing, pixel sorting, RGB channel splitting, VHS tracking errors, corrupted digital signals, circuit bent visual noise, digital decay beauty, chromatic aberration" },
+    { id:"claymation", name:"Claymation Tactile", icon:"🧱", category:"experimental",
+      prompt:"Claymation stop-motion animation, plasticine texture, fingerprint details on clay, tactile handmade quality, Aardman Studios style, warm practical lighting, miniature set" },
+    { id:"sketch", name:"Croquis Animé", icon:"✏️", category:"experimental",
+      prompt:"Hand-drawn pencil sketch animation, visible sketch lines, cross-hatching, paper texture, graphite shading, animation that retains the rawness of the drawing process" },
+    { id:"collage", name:"Collage Découpé", icon:"✂️", category:"experimental",
+      prompt:"Mixed-media collage animation, torn paper edges, magazine cutouts, layered textures, stop-motion paper aesthetic, Terry Gilliam Monty Python style, absurd juxtapositions" },
+    { id:"liquid", name:"Liquide Abstrait", icon:"💧", category:"experimental",
+      prompt:"Liquid abstract animation, flowing paint in water, ink diffusion, fluid dynamics, macro photography aesthetic, organic shapes morphing, iridescent oil slick colors" }
+];
+
+// ==================================================================
+// PROMPTS ALÉATOIRES PRÉ-ENREGISTRÉS
+// ==================================================================
+const RANDOM_ACTIONS = [
+    "The subject bursts into an explosive, wildly dynamic action sequence, defying physics",
+    "A mesmerizing transformation unfolds as the subject morphs and evolves before our eyes",
+    "The subject performs an intense, hypnotic ritual, every gesture deliberate and powerful",
+    "Reality bends and warps around the subject as they move with otherworldly grace",
+    "The subject launches into a spectacular display of acrobatic prowess and raw energy",
+    "A surreal, dreamlike sequence where the environment itself responds to the subject's movements",
+    "The subject emerges dramatically, radiating power and presence that fills the entire frame",
+    "Time seems to slow as the subject performs a series of impossibly elegant movements",
+    "The subject explodes into a flurry of chaotic yet strangely beautiful motion",
+    "A powerful, ritualistic sequence of movements — ancient, primal, and transcendent",
+    "The subject walks with quiet, magnetic intensity, their presence reshaping the world around them",
+    "A dazzling display of technical mastery — every movement precise, explosive, breathtaking",
+    "The subject dances with wild abandon, spinning and twisting with impossible athleticism",
+    "A dramatic reveal as the subject turns toward the camera, eyes blazing with intensity",
+    "The subject and environment merge — wind, light, and motion combining into a single visual poem"
+];
+
+const RANDOM_LIGHTING = [
+    "dramatic golden hour backlight creating a luminous halo of dust and light",
+    "intense neon-soaked lighting with vibrant pink, cyan, and electric purple reflections",
+    "warm candlelight flickering against deep, dramatic shadows",
+    "bioluminescent glow emanating from the subject themselves, casting eerie light on surroundings",
+    "high-contrast chiaroscuro — a single beam of light cutting through total darkness",
+    "overcast, moody lighting with muted tones and thick atmospheric haze",
+    "sunlight streaming through a shattered ceiling, casting fractured geometric shadows",
+    "electric blue plasma arcs illuminating the scene from within the subject",
+    "sunset orange and deep violet sky, silhouetting the subject against a burning horizon",
+    "sterile fluorescent white light, clinical and unsettling, casting harsh shadows"
+];
+
+const RANDOM_CAMERA = [
+    "slow dolly-in, the camera gliding forward with cinematic smoothness, building tension",
+    "handheld tracking shot, organic and reactive movement that follows the action intimately",
+    "360-degree orbital movement around the subject, revealing every angle of the scene",
+    "low-angle shot looking up at the subject, emphasizing their power and dominance",
+    "extreme close-up on the subject's face, then rapid pull-back to reveal the full scene",
+    "static locked-off camera, allowing the subject's explosive movement to fill the frame",
+    "slow crane shot rising high above the scene, revealing the full scope of the environment",
+    "tracking shot from behind the subject as they move forward into the unknown",
+    "quick handheld zoom-punch into the subject's eyes at the climax of the action",
+    "fluid steadiest tracking shot circling the subject, never breaking visual contact"
+];
+
+// ==================================================================
+// QUOTA TRACKER
+// ==================================================================
+const QUOTA_LIMITS = { text: 20, video: 1 };
+const WINDOW_MS = 60000;
+
+const quotaTracker = {
+    text: [], video: [],
+    record(type) {
+        this[type].push(Date.now());
+        this.cleanup();
+        this.render();
+    },
+    cleanup() {
+        const cutoff = Date.now() - WINDOW_MS;
+        for (const t of ['text','video']) this[t] = this[t].filter(x => x > cutoff);
+    },
+    canProceed(type) {
+        this.cleanup();
+        return this[type].length < QUOTA_LIMITS[type];
+    },
+    waitTime(type) {
+        this.cleanup();
+        if (this[type].length < QUOTA_LIMITS[type]) return 0;
+        return Math.max(0, Math.ceil((this[type][0] + WINDOW_MS - Date.now()) / 1000));
+    },
+    render() {
+        const renderItem = (type) => {
+            const el = document.getElementById(`quota-${type}`);
+            if (!el) return;
+            const count = this[type].length;
+            const limit = QUOTA_LIMITS[type];
+            el.textContent = `${count}/${limit}`;
+            el.className = 'value ' + (count >= limit ? 'danger' : count >= limit - 1 ? 'warn' : 'ok');
+        };
+        renderItem('text'); renderItem('video');
+    }
+};
+setInterval(() => quotaTracker.render(), 1000);
+
+// ==================================================================
+// ÉTAT GLOBAL
+// ==================================================================
+let state = {
+    isRunning: false,
+    imageDataUri: null,
+    selectedStyles: new Set(),
+    durationFrames: 153,
+    motionKey: "excentrique",
+    queue: [],
+    completed: 0
+};
+
+// ==================================================================
+// UTILITAIRES
+// ==================================================================
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function log(msg, cls="") {
+    const el = document.getElementById("log-box");
+    el.classList.add("visible");
+    const d = document.createElement("div");
+    d.className = cls;
+    d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    el.appendChild(d);
+    el.scrollTop = el.scrollHeight;
+}
+function setStatus(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+function showCooldown(sec) {
+    const el = document.getElementById("cooldown-badge");
+    if (!el) return;
+    if (sec > 0) { el.textContent = `⏸ ${sec}s`; el.style.display = "inline-block"; }
+    else { el.style.display = "none"; }
+}
+function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => (
+        {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]
+    ));
+}
+
+async function countdown(seconds, label) {
+    for (let s = seconds; s > 0; s--) {
+        if (!state.isRunning) throw new Error("Annulé");
+        setStatus("global-status-text", `${label} (${s}s)`);
+        showCooldown(s);
+        await sleep(1000);
+    }
+    showCooldown(0);
+}
+
+async function waitForQuota(type, label) {
+    while (!quotaTracker.canProceed(type)) {
+        const wait = quotaTracker.waitTime(type);
+        if (wait <= 0) break;
+        log(`⏸ Quota ${type} saturé. Attente ${wait}s…`, "warn");
+        await countdown(wait, label || `⏸ Quota ${type}`);
+    }
+}
+
+// ==================================================================
+// API FETCH (429 + réseau + quota)
+// ==================================================================
+async function apiFetch(url, options = {}, label = "API", type = null) {
+    let rateAttempt = 0, netAttempt = 0;
+    if (type) await waitForQuota(type, `⏸ Quota ${type}`);
+
+    while (true) {
+        let res;
+        try {
+            res = await fetch(url, options);
+        } catch (netErr) {
+            if (netAttempt >= MAX_NETWORK_RETRIES) throw new Error(`Erreur réseau : ${netErr.message}`);
+            const waitSec = NETWORK_ERROR_BACKOFF_SEC[netAttempt] || 60;
+            log(`⚠️ ${label} : erreur réseau. Retry ${netAttempt+1}/${MAX_NETWORK_RETRIES} dans ${waitSec}s…`, "warn");
+            await countdown(waitSec, "🔌 Erreur réseau");
+            netAttempt++;
+            continue;
+        }
+        netAttempt = 0;
+        if (res.status !== 429) {
+            if (type && res.ok) quotaTracker.record(type);
+            return res;
+        }
+        if (rateAttempt >= MAX_RATE_LIMIT_RETRIES) return res;
+        const waitSec = RATE_LIMIT_BACKOFF_SEC[rateAttempt] || 60;
+        log(`⚠️ ${label} : RATE LIMIT 429. Attente ${waitSec}s (${rateAttempt+1}/${MAX_RATE_LIMIT_RETRIES})…`, "warn");
+        await countdown(waitSec, "⏸ Rate limit");
+        rateAttempt++;
+    }
+}
+
+function apiHeaders() {
+    return { "Authorization": `Bearer ${getApiKey()}`, "Content-Type": "application/json" };
+}
+function getApiKey() {
+    return (localStorage.getItem("agnes_api_key") || "").trim() || DEFAULT_API_KEY;
+}
+function saveApiKey() {
+    const v = document.getElementById("api-key-input").value.trim();
+    if (!v) { alert("Clé vide."); return; }
+    localStorage.setItem("agnes_api_key", v);
+    log("Clé API sauvegardée.", "ok");
+}
+
+function fileToDataUri(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => reject(new Error("Erreur lecture fichier."));
+        reader.readAsDataURL(file);
+    });
+}
+
+// ==================================================================
+// CONSTRUCTION DU PROMPT
+// ==================================================================
+function buildPrompt(style, motionKey) {
+    const action = RANDOM_ACTIONS[Math.floor(Math.random() * RANDOM_ACTIONS.length)];
+    const lighting = RANDOM_LIGHTING[Math.floor(Math.random() * RANDOM_LIGHTING.length)];
+    const camera = RANDOM_CAMERA[Math.floor(Math.random() * RANDOM_CAMERA.length)];
+
+    const motionDesc = {
+        "excentrique": "completely eccentric and unpredictable movements, absurd gestures, whimsical body language, joyful chaos, burlesque energy, surprising transitions",
+        "hallucinant": "hallucinatory, surreal, reality-bending movements that defy logic, dreamlike distortions, impossible physics, mind-altering visual spectacle",
+        "spectaculaire": "spectacular explosive motion, dramatic gestures, larger-than-life energy, show-stopping action, visual fireworks",
+        "impressionnant": "impressive, awe-inspiring movement, technically masterful, visually stunning, virtuoso performance",
+        "shaolin": "Shaolin kung-fu movements, flowing katas, martial arts precision, balanced stances, graceful and powerful transitions",
+        "hiphop": "hip-hop dance movements, urban style, body isolations, popping and locking, street dance energy, rhythmic swagger",
+        "robot": "robotic jerky movements, mechanical precision, angular body language, sudden pauses, android-like motion, servo-driven twitches",
+        "ralenti": "slow-motion movement, every micro-gesture visible and amplified, dreamlike pacing, suspended in time",
+        "contemporain": "contemporary dance, fluid abstract gestures, weight shifting, organic transitions, minimalist expressiveness, emotional body language",
+        "cinematique": "cinematic, deliberate motion with dramatic pauses, every gesture feeling intentional and powerful, epic presence"
+    }[motionKey] || "expressive movement";
+
+    return `${style.prompt}. ${action}. ${motionDesc}. ${lighting}. ${camera}. Sound design: minimal foley, soft ambient textures, no music, no instruments, no dialogue. Cinematic, 9:16 vertical, 24fps, consistent character design, no text, no subtitles.`;
+}
+
+// ==================================================================
+// UI — GRILLE DE STYLES
+// ==================================================================
+function renderStylesGrid() {
+    const grid = document.getElementById("styles-grid");
+    const categories = [
+        { key:"animation", label:"📖 Animation / Manga" },
+        { key:"cinema", label:"🎬 Cinéma" },
+        { key:"painterly", label:"🖼️ Pictural / Peinture" },
+        { key:"genre", label:"🎭 Genre / Ambiance" },
+        { key:"experimental", label:"🔬 Expérimental" }
+    ];
+
+    grid.innerHTML = categories.map(cat => {
+        const styles = STYLES.filter(s => s.category === cat.key);
+        return `
+            <div style="width:100%; margin-bottom:0.5rem;">
+                <div style="font-size:0.7rem; color:var(--text-dim); margin-bottom:0.3rem;">${cat.label}</div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:0.5rem;">
+                    ${styles.map(s => `
+                        <label class="style-checkbox ${state.selectedStyles.has(s.id) ? 'checked' : ''}"
+                               data-id="${s.id}">
+                            <input type="checkbox" ${state.selectedStyles.has(s.id) ? 'checked' : ''}
+                                   onchange="toggleStyle('${s.id}', this.checked)">
+                            ${s.icon} ${s.name}
+                        </label>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+    }).join("");
+    updateGenerateBtn();
+    updateDurationInfo();
+}
+
+function toggleStyle(id, checked) {
+    if (checked) state.selectedStyles.add(id);
+    else state.selectedStyles.delete(id);
+    document.querySelectorAll(".style-checkbox").forEach(el => {
+        if (el.dataset.id === id) el.classList.toggle("checked", checked);
+    });
+    updateGenerateBtn();
+}
+
+function updateGenerateBtn() {
+    const btn = document.getElementById("generate-btn");
+    const hasImage = !!state.imageDataUri;
+    const hasStyles = state.selectedStyles.size > 0;
+    btn.disabled = !hasImage || !hasStyles || state.isRunning;
+    btn.textContent = state.isRunning
+        ? `🎬 Génération en cours… (${state.completed}/${state.queue.length})`
+        : `🎬 Générer ${state.selectedStyles.size} vidéo${state.selectedStyles.size > 1 ? 's' : ''}`;
+}
+
+function updateDurationInfo() {
+    const frames = parseInt(document.getElementById("duration-select").value, 10);
+    const seconds = (frames / 24).toFixed(1);
+    const totalSeconds = (frames / 24 * state.selectedStyles.size).toFixed(0);
+    const info = document.getElementById("duration-info");
+    info.innerHTML = `⏱ Durée : <strong>${seconds} s</strong> par vidéo · ${state.selectedStyles.size} vidéo(s) sélectionnée(s) · Durée totale : <strong>~${totalSeconds} s</strong>`;
+}
+
+// ==================================================================
+// UPLOAD IMAGE
+// ==================================================================
+const uploadArea = document.getElementById("upload-area");
+const fileInput = document.getElementById("file-input");
+const previewThumb = document.getElementById("preview-thumb");
+
+uploadArea.addEventListener("click", () => fileInput.click());
+uploadArea.addEventListener("dragover", (e) => { e.preventDefault(); uploadArea.classList.add("dragover"); });
+uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("dragover"));
+uploadArea.addEventListener("drop", (e) => {
+    e.preventDefault(); uploadArea.classList.remove("dragover");
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", (e) => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+async function handleFile(file) {
+    if (!file.type.startsWith("image/")) { alert("Fichier non image."); return; }
+    if (file.size > 10 * 1024 * 1024) { alert("Image trop lourde (max 10 MB)."); return; }
+    try {
+        const dataUri = await fileToDataUri(file);
+        state.imageDataUri = dataUri;
+        previewThumb.src = dataUri;
+        previewThumb.classList.add("visible");
+        log(`Image chargée (${(file.size / 1024).toFixed(0)} Ko).`, "ok");
+        updateGenerateBtn();
+    } catch (err) { alert("Erreur : " + err.message); }
+}
+
+function clearImage() {
+    state.imageDataUri = null;
+    fileInput.value = "";
+    previewThumb.src = "";
+    previewThumb.classList.remove("visible");
+    log("Image retirée.", "");
+    updateGenerateBtn();
+}
+
+// ==================================================================
+// FILE D'ATTENTE
+// ==================================================================
+function renderQueue() {
+    const panel = document.getElementById("queue-panel");
+    if (state.queue.length === 0) { panel.classList.add("hidden"); return; }
+    panel.classList.remove("hidden");
+
+    panel.innerHTML = state.queue.map((item, i) => {
+        let icon = "⏳", statusText = "En attente";
+        if (item.status === "processing") { icon = "◐"; statusText = item.progress || "Génération…"; }
+        else if (item.status === "done") { icon = "✅"; statusText = "Terminé"; }
+        else if (item.status === "failed") { icon = "❌"; statusText = "Échec"; }
+
+        const cls = item.status === "pending" ? "pending"
+                  : item.status === "processing" ? "processing"
+                  : item.status === "done" ? "done" : "failed";
+
+        const durationSec = (item.numFrames / 24).toFixed(1);
+        return `
+            <div class="queue-item ${cls}">
+                <div class="queue-icon">${icon}</div>
+                <div class="queue-info">
+                    <div class="queue-style">${item.style.icon} ${esc(item.style.name)}</div>
+                    <div class="queue-meta">
+                        <span>⏱ ${durationSec}s</span>
+                        <span>🎬 ${esc(item.motionKey)}</span>
+                    </div>
+                </div>
+                <div class="queue-status">${statusText}</div>
+            </div>
+        `;
+    }).join("");
+}
+
+// ==================================================================
+// WORKFLOW PRINCIPAL
+// ==================================================================
+async function startGeneration() {
+    if (state.isRunning) return;
+
+    if (!state.imageDataUri) { alert("Choisissez une image."); return; }
+    if (state.selectedStyles.size === 0) { alert("Cochez au moins un style."); return; }
+
+    state.isRunning = true;
+    state.completed = 0;
+
+    const durationSelect = document.getElementById("duration-select");
+    const motionSelect = document.getElementById("motion-select");
+
+    state.durationFrames = parseInt(durationSelect.value, 10) || 153;
+    state.motionKey = motionSelect.value;
+
+    // Construire la file d'attente
+    const selectedStyles = Array.from(state.selectedStyles)
+        .map(id => STYLES.find(s => s.id === id))
+        .filter(Boolean);
+
+    state.queue = selectedStyles.map(style => ({
+        style,
+        status: "pending",
+        videoUrl: null,
+        videoId: null,
+        progress: null,
+        numFrames: state.durationFrames,
+        motionKey: state.motionKey,
+        prompt: null
+    }));
+
+    // Nettoyer l'interface
+    document.getElementById("video-grid").innerHTML = "";
+    document.getElementById("gallery-panel").classList.add("hidden");
+    document.getElementById("log-box").innerHTML = "";
+    document.getElementById("status-panel").classList.remove("hidden");
+    document.getElementById("queue-panel").classList.remove("hidden");
+
+    renderQueue();
+    updateGenerateBtn();
+
+    const durationSec = (state.durationFrames / 24).toFixed(1);
+    log(`🎬 Démarrage — ${state.queue.length} vidéos à générer`, "hl");
+    log(`Durée par vidéo : ${durationSec}s | Mouvement : ${state.motionKey}`, "");
+    log(`Estimation totale : ~${Math.ceil(state.queue.length * (parseInt(durationSec) + 60) / 60)} minutes`, "");
+
+    try {
+        // Pause pré-vidéo (respect RPM vidéo = 1/min)
+        if (quotaTracker.video.length > 0) {
+            const wait = quotaTracker.waitTime("video");
+            if (wait > 0) {
+                log(`Pause de ${wait}s avant le premier appel vidéo (quota vidéo saturé)…`, "warn");
+                await countdown(wait, "⏸ Quota vidéo");
+            }
+        } else {
+            log(`Pause de ${PRE_VIDEO_DELAY_MS / 1000}s avant le premier clip…`, "warn");
+            await countdown(Math.floor(PRE_VIDEO_DELAY_MS / 1000), "⏸ Pause pré-vidéo");
+        }
+
+        // Génération séquentielle
+        for (let i = 0; i < state.queue.length; i++) {
+            if (!state.isRunning) break;
+            const item = state.queue[i];
+
+            log(`━━━ Vidéo ${i+1}/${state.queue.length} — ${item.style.icon} ${item.style.name} ━━━`, "hl");
+            item.status = "processing";
+            item.progress = "Création…";
+            renderQueue();
+
+            // Construire le prompt
+            const finalPrompt = buildPrompt(item.style, state.motionKey);
+            item.prompt = finalPrompt;
+
+            // Créer la tâche vidéo
+            let videoId;
+            try {
+                const body = {
+                    model: MODELS.video,
+                    prompt: finalPrompt,
+                    image: state.imageDataUri,
+                    num_frames: item.numFrames,
+                    frame_rate: FRAME_RATE
+                };
+
+                const res = await apiFetch(`${BASE_URL}/videos`, {
+                    method: "POST", headers: apiHeaders(), body: JSON.stringify(body)
+                }, `Vidéo ${i+1} · Création`, "video");
+
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`HTTP ${res.status} — ${errText.slice(0, 120)}`);
+                }
+                const data = await res.json();
+                videoId = data.video_id || data.id || data.task_id;
+                if (!videoId) throw new Error("Pas de video_id.");
+                item.videoId = videoId;
+                log(`Vidéo ${i+1} : tâche créée (${String(videoId).slice(0, 25)}…)`, "ok");
+            } catch (err) {
+                log(`Vidéo ${i+1} : échec création — ${err.message}`, "err");
+                item.status = "failed";
+                item.progress = "Échec création";
+                renderQueue();
+                if (i < state.queue.length - 1 && state.isRunning) {
+                    await countdown(Math.floor(INTER_VIDEO_DELAY_MS / 1000), "⏸ Pause inter-vidéo");
+                }
+                continue;
+            }
+
+            // Polling
+            try {
+                const url = await pollVideo(videoId, `Vidéo ${i+1}`, item);
+                item.status = "done";
+                item.videoUrl = url;
+                item.progress = "Terminé";
+                state.completed++;
+                renderQueue();
+                addVideoToGallery(item);
+                document.getElementById("gallery-panel").classList.remove("hidden");
+                log(`Vidéo ${i+1} : ✅ TERMINÉE`, "ok");
+            } catch (err) {
+                log(`Vidéo ${i+1} : ${err.message}`, "err");
+                item.status = "failed";
+                item.progress = "Échec";
+                renderQueue();
+            }
+
+            updateGenerateBtn();
+
+            // Pause inter-vidéo (RPM vidéo = 1/min)
+            if (i < state.queue.length - 1 && state.isRunning) {
+                log(`Pause de ${INTER_VIDEO_DELAY_MS / 1000}s avant la vidéo suivante…`, "warn");
+                await countdown(Math.floor(INTER_VIDEO_DELAY_MS / 1000), "⏸ Pause inter-vidéo");
+            }
+        }
+
+        log(`✦ Workflow terminé — ${state.completed}/${state.queue.length} vidéos générées ✦`,
+            state.completed > 0 ? "ok" : "err");
+        setStatus("global-status-text", `✦ ${state.completed}/${state.queue.length} vidéos générées ✦`);
+
+    } catch (err) {
+        log(`Erreur globale : ${err.message}`, "err");
+        setStatus("global-status-text", "Erreur : " + err.message);
+    } finally {
+        state.isRunning = false;
+        showCooldown(0);
+        updateGenerateBtn();
+    }
+}
+
+// ==================================================================
+// POLLING VIDÉO
+// ==================================================================
+async function pollVideo(videoId, label, item) {
+    // Attente initiale
+    let remaining = Math.floor(FIRST_POLL_DELAY_MS / 1000);
+    while (remaining > 0 && state.isRunning) {
+        item.progress = `Attente… ${remaining}s`;
+        renderQueue();
+        await sleep(1000);
+        remaining--;
+    }
+    if (!state.isRunning) throw new Error("Annulé");
+
+    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+        if (!state.isRunning) throw new Error("Annulé");
+        if (attempt > 0) {
+            let r = Math.floor(POLL_INTERVAL_MS / 1000);
+            while (r > 0 && state.isRunning) {
+                item.progress = `Vérif. ${attempt+1} — ${r}s`;
+                renderQueue();
+                await sleep(1000);
+                r--;
+            }
+        }
+
+        const url = `${RAW_URL}/agnesapi?video_id=${encodeURIComponent(videoId)}&model_name=${encodeURIComponent(MODELS.video)}`;
+        try {
+            const r = await apiFetch(url, { method: "GET", headers: apiHeaders() }, `${label} · Poll`);
+            const d = await r.json();
+            const status = d.status || "unknown";
+            const progress = d.progress ?? 0;
+            log(`${label} : statut="${status}", progression=${progress}%`);
+            item.progress = `${progress}%`;
+            renderQueue();
+
+            if (status === "completed" || status === "succeeded") {
+                const videoUrl = d.metadata?.url || d.url || d.output?.url;
+                if (!videoUrl) throw new Error("Terminé mais pas d'URL.");
+                return videoUrl;
+            }
+            if (status === "failed" || status === "error")
+                throw new Error("La génération a échoué.");
+        } catch (err) {
+            if (err.message.includes("échoué") || err.message.includes("URL")) throw err;
+            log(`${label} : erreur polling, on réessaie…`, "warn");
+        }
+    }
+    throw new Error("Délai maximal dépassé.");
+}
+
+// ==================================================================
+// GALERIE
+// ==================================================================
+function addVideoToGallery(item) {
+    const grid = document.getElementById("video-grid");
+    const el = document.createElement("div");
+    el.className = "video-item";
+    const durationSec = (item.numFrames / 24).toFixed(1);
+    el.innerHTML = `
+        <video controls preload="metadata" autoplay muted playsinline>
+            <source src="${item.videoUrl}" type="video/mp4">
+        </video>
+        <div class="video-caption">
+            <div class="video-caption-title">${item.style.icon} ${esc(item.style.name)}</div>
+            <div class="video-caption-meta">⏱ ${durationSec}s · 🎬 ${esc(item.motionKey)}</div>
+        </div>
+    `;
+    grid.appendChild(el);
+}
+
+// ==================================================================
+// INIT
+// ==================================================================
+(async function init() {
+    const stored = localStorage.getItem("agnes_api_key");
+    if (stored) document.getElementById("api-key-input").value = stored;
+
+    renderStylesGrid();
+    quotaTracker.render();
+
+    document.getElementById("duration-select").addEventListener("change", updateDurationInfo);
+
+    log("CinéIA Spectrum — Prêt", "ok");
+    console.log("CinéIA Spectrum — Prêt");
+})();
+</script>
+</body>
+</html>
